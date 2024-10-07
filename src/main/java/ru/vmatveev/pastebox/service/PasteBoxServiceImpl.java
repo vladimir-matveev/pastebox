@@ -10,16 +10,18 @@ import ru.vmatveev.pastebox.api.response.PasteBoxUrlResponse;
 import ru.vmatveev.pastebox.repository.PasteBoxEntity;
 import ru.vmatveev.pastebox.repository.PasteBoxRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @ConfigurationProperties(prefix = "app")
 public class PasteBoxServiceImpl implements PasteBoxService{
 
-  private String host;
-  private  int publicListSize;
+  private String host = "http://abc.ru";
+  private  int publicListSize = 10;
 
   private AtomicInteger idGenerator= new AtomicInteger(0);
   private final PasteBoxRepository repository;
@@ -32,7 +34,10 @@ public class PasteBoxServiceImpl implements PasteBoxService{
 
   @Override
   public List<PasteBoxResponse> getPublicPasteBoxes() {
-    return null;
+    List<PasteBoxEntity> list = repository.getListOfPublicAndAlive(publicListSize);
+    return list.stream().map(pasteBoxEntity ->
+      new PasteBoxResponse(pasteBoxEntity.getData(), pasteBoxEntity.isPublic()))
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -43,6 +48,7 @@ public class PasteBoxServiceImpl implements PasteBoxService{
     pasteBoxEntity.setId(hash);
     pasteBoxEntity.setHash(Integer.toHexString(hash));
     pasteBoxEntity.setPublic(request.getPublicStatus() == PublicStatus.PUBLIC);
+    pasteBoxEntity.setLifeTime(LocalDateTime.now().plusSeconds(request.getExpirationTimeSeconds()));
     repository.add(pasteBoxEntity);
     return new PasteBoxUrlResponse(host + "/" + pasteBoxEntity.getHash());
   }
